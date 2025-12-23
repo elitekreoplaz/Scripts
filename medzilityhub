@@ -1,0 +1,582 @@
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+
+local player = Players.LocalPlayer
+local char = player.Character or player.CharacterAdded:Wait()
+local hum = char:WaitForChild("Humanoid")
+local camera = workspace.CurrentCamera
+
+local loadingGui = Instance.new("ScreenGui")
+loadingGui.IgnoreGuiInset = true
+loadingGui.ResetOnSpawn = false
+loadingGui.Parent = player:WaitForChild("PlayerGui")
+
+local black = Instance.new("Frame", loadingGui)
+black.Size = UDim2.new(1,0,1,0)
+black.BackgroundColor3 = Color3.new(0,0,0)
+
+local text = Instance.new("TextLabel", black)
+text.Size = UDim2.new(1,0,1,0)
+text.BackgroundTransparency = 1
+text.Text = "MEDZTILITY HUB LOADING..."
+text.Font = Enum.Font.GothamBlack
+text.TextSize = 32
+text.TextColor3 = Color3.new(1,1,1)
+
+task.wait(1.5)
+
+TweenService:Create(black, TweenInfo.new(1), {BackgroundTransparency = 1}):Play()
+TweenService:Create(text, TweenInfo.new(1), {TextTransparency = 1}):Play()
+
+task.wait(1)
+
+loadingGui:Destroy()
+
+local flying = false
+local invisible = false
+local noclip = false
+local infJump = false
+local flySpeed = 60
+local moveVector = Vector3.zero
+local RGB_Active = false
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "MEDZTILITY"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local main = Instance.new("Frame", gui)
+main.Size = UDim2.new(0, 420, 0, 350)
+main.Position = UDim2.new(0.05, 0, 0.2, 0)
+main.BackgroundColor3 = Color3.fromRGB(20,20,20)
+main.Active = true
+main.Draggable = true
+local mainCorner = Instance.new("UICorner", main)
+mainCorner.CornerRadius = UDim.new(0, 10)
+
+local title = Instance.new("Frame", main)
+title.Size = UDim2.new(1, 0, 0, 45)
+title.BackgroundColor3 = Color3.fromRGB(0,120,255)
+local titleCorner = Instance.new("UICorner", title)
+titleCorner.CornerRadius = UDim.new(0, 10)
+
+local titleText = Instance.new("TextLabel", title)
+titleText.Size = UDim2.new(1, -50, 1, 0)
+titleText.Position = UDim2.new(0, 10, 0, 0)
+titleText.BackgroundTransparency = 1
+titleText.Font = Enum.Font.GothamBlack
+titleText.TextSize = 20
+titleText.TextColor3 = Color3.new(1,1,1)
+titleText.TextXAlignment = Enum.TextXAlignment.Left
+titleText.Text = "MEDZTILITY HUB"
+
+local minimize = Instance.new("TextButton", title)
+minimize.Size = UDim2.new(0, 40, 1, 0)
+minimize.Position = UDim2.new(1, -45, 0, 0)
+minimize.BackgroundTransparency = 1
+minimize.Text = "-"
+minimize.Font = Enum.Font.GothamBlack
+minimize.TextSize = 26
+minimize.TextColor3 = Color3.new(1,1,1)
+
+local tabBar = Instance.new("Frame", main)
+tabBar.Size = UDim2.new(0, 110, 1, -55)
+tabBar.Position = UDim2.new(1, -110, 0, 55)
+tabBar.BackgroundColor3 = Color3.fromRGB(25,25,25)
+local tabCorner = Instance.new("UICorner", tabBar)
+tabCorner.CornerRadius = UDim.new(0, 10)
+
+local tabList = Instance.new("UIListLayout", tabBar)
+tabList.Padding = UDim.new(0, 6)
+tabList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+tabList.VerticalAlignment = Enum.VerticalAlignment.Top
+
+local Tabs = {}
+local Pages = {}
+
+local function CreateTab(name)
+    local btn = Instance.new("TextButton", tabBar)
+    btn.Size = UDim2.new(1, -10, 0, 35)
+    btn.BackgroundColor3 = Color3.fromRGB(40,40,40)
+    btn.TextColor3 = Color3.new(1,1,1)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 14
+    btn.Text = name
+    local c = Instance.new("UICorner", btn)
+    c.CornerRadius = UDim.new(0, 6)
+
+    local page = Instance.new("Frame", main)
+    page.Size = UDim2.new(1, -130, 1, -65)
+    page.Position = UDim2.new(0, 10, 0, 55)
+    page.BackgroundTransparency = 1
+    page.Visible = false
+
+    local list = Instance.new("UIListLayout", page)
+    list.Padding = UDim.new(0, 8)
+
+    Tabs[name] = btn
+    Pages[name] = page
+
+    btn.MouseButton1Click:Connect(function()
+        for _, p in pairs(Pages) do
+            p.Visible = false
+        end
+        page.Visible = true
+    end)
+
+    return page
+end
+
+local function MakeButton(parent, text)
+    local b = Instance.new("TextButton", parent)
+    b.Size = UDim2.new(1, 0, 0, 35)
+    b.BackgroundColor3 = Color3.fromRGB(40,40,40)
+    b.TextColor3 = Color3.new(1,1,1)
+    b.Font = Enum.Font.GothamBold
+    b.TextSize = 15
+    b.Text = text
+    b.Name = text
+    local c = Instance.new("UICorner", b)
+    c.CornerRadius = UDim.new(0, 6)
+    return b
+end
+
+local function MakeSlider(parent, text, minVal, maxVal, default, callback)
+    local frame = Instance.new("Frame", parent)
+    frame.Size = UDim2.new(1, 0, 0, 45)
+    frame.BackgroundColor3 = Color3.fromRGB(40,40,40)
+    local fC = Instance.new("UICorner", frame)
+    fC.CornerRadius = UDim.new(0, 6)
+
+    local label = Instance.new("TextLabel", frame)
+    label.Size = UDim2.new(1, -10, 0.5, 0)
+    label.Position = UDim2.new(0, 5, 0, 2)
+    label.BackgroundTransparency = 1
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 13
+    label.TextColor3 = Color3.new(1,1,1)
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Text = text .. " (" .. default .. ")"
+
+    local bar = Instance.new("Frame", frame)
+    bar.Size = UDim2.new(1, -20, 0, 6)
+    bar.Position = UDim2.new(0, 10, 0.65, 0)
+    bar.BackgroundColor3 = Color3.fromRGB(0,120,255)
+    local bC = Instance.new("UICorner", bar)
+    bC.CornerRadius = UDim.new(1, 0)
+
+    local knob = Instance.new("ImageButton", bar)
+    knob.Size = UDim2.new(0, 14, 0, 14)
+    knob.Position = UDim2.new((default-minVal)/(maxVal-minVal), -7, 0.5, -7)
+    knob.BackgroundColor3 = Color3.new(1,1,1)
+    knob.AutoButtonColor = false
+    local kC = Instance.new("UICorner", knob)
+    kC.CornerRadius = UDim.new(1, 0)
+
+    local dragging = false
+
+    local function setFromX(x)
+        local rel = math.clamp((x - bar.AbsolutePosition.X) / bar.AbsoluteSize.X, 0, 1)
+        knob.Position = UDim2.new(rel, -7, 0.5, -7)
+        local value = math.floor(minVal + (maxVal - minVal) * rel)
+        label.Text = text .. " (" .. value .. ")"
+        callback(value)
+    end
+
+    knob.MouseButton1Down:Connect(function()
+        dragging = true
+    end)
+
+    UIS.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
+
+    UIS.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            setFromX(input.Position.X)
+        end
+    end)
+
+    callback(default)
+end
+
+local movementPage = CreateTab("Movement")
+local playerPage = CreateTab("Player")
+local visualsPage = CreateTab("Visuals")
+local settingsPage = CreateTab("Settings")
+local keybindsPage = CreateTab("Keybinds")
+
+Pages["Movement"].Visible = true
+
+UIS.JumpRequest:Connect(function()
+    if infJump then
+        hum:ChangeState(Enum.HumanoidStateType.Jumping)
+    end
+end)
+
+local function setInvisible(state)
+    invisible = state
+    for _, v in pairs(char:GetDescendants()) do
+        if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then
+            v.LocalTransparencyModifier = state and 1 or 0
+        end
+    end
+end
+
+RunService.Stepped:Connect(function()
+    if noclip then
+        for _, v in pairs(char:GetDescendants()) do
+            if v:IsA("BasePart") then
+                v.CanCollide = false
+            end
+        end
+    end
+end)
+
+UIS.InputBegan:Connect(function(input, gpe)
+    if gpe then return end
+    if input.KeyCode == Enum.KeyCode.W then moveVector += Vector3.new(0,0,-1) end
+    if input.KeyCode == Enum.KeyCode.S then moveVector += Vector3.new(0,0,1) end
+    if input.KeyCode == Enum.KeyCode.A then moveVector += Vector3.new(-1,0,0) end
+    if input.KeyCode == Enum.KeyCode.D then moveVector += Vector3.new(1,0,0) end
+end)
+
+UIS.InputEnded:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.W then moveVector -= Vector3.new(0,0,-1) end
+    if input.KeyCode == Enum.KeyCode.S then moveVector -= Vector3.new(0,0,1) end
+    if input.KeyCode == Enum.KeyCode.A then moveVector -= Vector3.new(-1,0,0) end
+    if input.KeyCode == Enum.KeyCode.D then moveVector -= Vector3.new(1,0,0) end
+end)
+
+local bodyGyro
+local bodyVel
+
+local function startFly()
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    flying = true
+    bodyGyro = Instance.new("BodyGyro", root)
+    bodyGyro.P = 9e4
+    bodyGyro.MaxTorque = Vector3.new(9e9,9e9,9e9)
+    bodyVel = Instance.new("BodyVelocity", root)
+    bodyVel.MaxForce = Vector3.new(9e9,9e9,9e9)
+    task.spawn(function()
+        while flying do
+            local cam = camera
+            bodyGyro.CFrame = cam.CFrame
+            if moveVector.Magnitude > 0 then
+                local dir = cam.CFrame:VectorToWorldSpace(moveVector).Unit
+                bodyVel.Velocity = dir * flySpeed
+            else
+                bodyVel.Velocity = Vector3.zero
+            end
+            RunService.RenderStepped:Wait()
+        end
+    end)
+end
+
+local function stopFly()
+    flying = false
+    if bodyGyro then bodyGyro:Destroy() end
+    if bodyVel then bodyVel:Destroy() end
+end
+
+local Themes = {
+    Midnight = {
+        Main = Color3.fromRGB(20,20,20),
+        Accent = Color3.fromRGB(0,120,255),
+        Button = Color3.fromRGB(40,40,40),
+        Text = Color3.new(1,1,1)
+    },
+    Vaporwave = {
+        Main = Color3.fromRGB(255,180,220),
+        Accent = Color3.fromRGB(180,120,255),
+        Button = Color3.fromRGB(255,150,200),
+        Text = Color3.fromRGB(40,0,60)
+    },
+    MinimalWhite = {
+        Main = Color3.fromRGB(240,240,240),
+        Accent = Color3.fromRGB(200,200,200),
+        Button = Color3.fromRGB(220,220,220),
+        Text = Color3.fromRGB(20,20,20)
+    },
+    RGB = "RGB"
+}
+
+RunService.RenderStepped:Connect(function()
+    if RGB_Active then
+        local t = tick()
+        local r = 0.5 + 0.5 * math.sin(t*2)
+        local g = 0.5 + 0.5 * math.sin(t*2 + 2)
+        local b = 0.5 + 0.5 * math.sin(t*2 + 4)
+        local c = Color3.new(r,g,b)
+        main.BackgroundColor3 = c
+        title.BackgroundColor3 = c
+        for _, item in pairs(tabBar:GetChildren()) do
+            if item:IsA("TextButton") then
+                item.BackgroundColor3 = c
+                item.TextColor3 = Color3.new(1,1,1)
+            end
+        end
+    end
+end)
+
+local function applyTheme(name)
+    if name == "RGB" then
+        RGB_Active = true
+        return
+    end
+    RGB_Active = false
+    local t = Themes[name]
+    if not t then return end
+    main.BackgroundColor3 = t.Main
+    title.BackgroundColor3 = t.Accent
+    titleText.TextColor3 = t.Text
+    for _, item in pairs(tabBar:GetChildren()) do
+        if item:IsA("TextButton") then
+            item.BackgroundColor3 = t.Button
+            item.TextColor3 = t.Text
+        end
+    end
+    for _, page in pairs(Pages) do
+        for _, child in pairs(page:GetChildren()) do
+            if child:IsA("TextButton") or child:IsA("Frame") then
+                child.BackgroundColor3 = t.Button
+                for _, sub in pairs(child:GetChildren()) do
+                    if sub:IsA("TextLabel") then
+                        sub.TextColor3 = t.Text
+                    end
+                end
+            end
+        end
+    end
+end
+
+local flyBtn = MakeButton(movementPage, "Toggle Fly")
+flyBtn.MouseButton1Click:Connect(function()
+    if flying then stopFly() else startFly() end
+end)
+
+local infJumpBtn = MakeButton(movementPage, "Toggle Infinite Jump")
+infJumpBtn.MouseButton1Click:Connect(function()
+    infJump = not infJump
+end)
+
+MakeSlider(movementPage, "Fly Speed", 20, 200, flySpeed, function(v)
+    flySpeed = v
+end)
+
+MakeSlider(playerPage, "WalkSpeed", 10, 200, hum.WalkSpeed, function(v)
+    hum.WalkSpeed = v
+end)
+
+MakeSlider(playerPage, "JumpPower", 20, 200, hum.JumpPower, function(v)
+    hum.JumpPower = v
+end)
+
+local invisBtn = MakeButton(playerPage, "Toggle Invisibility")
+invisBtn.MouseButton1Click:Connect(function()
+    setInvisible(not invisible)
+end)
+
+local noclipBtn = MakeButton(playerPage, "Toggle Noclip")
+noclipBtn.MouseButton1Click:Connect(function()
+    noclip = not noclip
+end)
+
+local themeBtn = MakeButton(visualsPage, "Cycle Theme")
+themeBtn.MouseButton1Click:Connect(function()
+    local order = {"Midnight","Vaporwave","MinimalWhite","RGB"}
+    local current
+    if RGB_Active then
+        current = "RGB"
+    else
+        for _, name in ipairs(order) do
+            local t = Themes[name]
+            if t and main.BackgroundColor3 == t.Main then
+                current = name
+                break
+            end
+        end
+    end
+    local idx = table.find(order, current) or 1
+    idx = idx + 1
+    if idx > #order then idx = 1 end
+    applyTheme(order[idx])
+end)
+
+local resetBtn = MakeButton(settingsPage, "Reset to Defaults")
+resetBtn.MouseButton1Click:Connect(function()
+    hum.WalkSpeed = 16
+    hum.JumpPower = 50
+    flySpeed = 60
+    infJump = false
+    noclip = false
+    setInvisible(false)
+    stopFly()
+    applyTheme("Midnight")
+end)
+
+local minimized = false
+
+minimize.MouseButton1Click:Connect(function()
+    minimized = not minimized
+    TweenService:Create(main, TweenInfo.new(0.25), {
+        Size = minimized and UDim2.new(0, 420, 0, 45) or UDim2.new(0, 420, 0, 350)
+    }):Play()
+    tabBar.Visible = not minimized
+    resetBtn.Visible = not minimized
+    if minimized then
+        for _, page in pairs(Pages) do
+            page.Visible = false
+        end
+    else
+        for _, page in pairs(Pages) do
+            page.Visible = false
+        end
+        Pages["Movement"].Visible = true
+    end
+end)
+
+local keybinds = {
+    Fly = Enum.KeyCode.F,
+    InfiniteJump = Enum.KeyCode.J,
+    Invisibility = Enum.KeyCode.K,
+    Noclip = Enum.KeyCode.N,
+    ToggleHub = Enum.KeyCode.RightShift
+}
+
+local keybindPopup = Instance.new("Frame", gui)
+keybindPopup.Size = UDim2.new(0, 300, 0, 120)
+keybindPopup.Position = UDim2.new(0.5, -150, 0.5, -60)
+keybindPopup.BackgroundColor3 = Color3.fromRGB(20,20,20)
+keybindPopup.Visible = false
+local kpC = Instance.new("UICorner", keybindPopup)
+kpC.CornerRadius = UDim.new(0, 10)
+
+local popupText = Instance.new("TextLabel", keybindPopup)
+popupText.Size = UDim2.new(1, 0, 1, 0)
+popupText.BackgroundTransparency = 1
+popupText.Font = Enum.Font.GothamBold
+popupText.TextSize = 20
+popupText.TextColor3 = Color3.new(1,1,1)
+popupText.Text = "Press a key..."
+
+local waitingForKey = nil
+
+UIS.InputBegan:Connect(function(input, gpe)
+    if waitingForKey and input.KeyCode ~= Enum.KeyCode.Unknown then
+        keybinds[waitingForKey] = input.KeyCode
+        popupText.Text = waitingForKey .. " set to " .. input.KeyCode.Name
+        task.wait(0.5)
+        keybindPopup.Visible = false
+        waitingForKey = nil
+    end
+end)
+
+UIS.InputBegan:Connect(function(input, gpe)
+    if gpe then return end
+    if input.KeyCode == keybinds.Fly then
+        if flying then stopFly() else startFly() end
+    end
+    if input.KeyCode == keybinds.InfiniteJump then
+        infJump = not infJump
+    end
+    if input.KeyCode == keybinds.Invisibility then
+        setInvisible(not invisible)
+    end
+    if input.KeyCode == keybinds.Noclip then
+        noclip = not noclip
+    end
+    if input.KeyCode == keybinds.ToggleHub then
+        main.Visible = not main.Visible
+    end
+end)
+
+local function MakeKeybindButton(actionName)
+    local btn = MakeButton(keybindsPage, "Change " .. actionName .. " Keybind (" .. keybinds[actionName].Name .. ")")
+    btn.MouseButton1Click:Connect(function()
+        popupText.Text = "Press a key for " .. actionName .. "..."
+        keybindPopup.Visible = true
+        waitingForKey = actionName
+    end)
+    return btn
+end
+
+MakeKeybindButton("Fly")
+MakeKeybindButton("InfiniteJump")
+MakeKeybindButton("Invisibility")
+MakeKeybindButton("Noclip")
+MakeKeybindButton("ToggleHub")
+
+local function SaveSettings()
+    local data = {
+        WalkSpeed = hum.WalkSpeed,
+        JumpPower = hum.JumpPower,
+        FlySpeed = flySpeed,
+        Theme = (RGB_Active and "RGB") or "Midnight",
+        States = {
+            InfiniteJump = infJump,
+            Invisibility = invisible,
+            Noclip = noclip
+        },
+        Keybinds = {
+            Fly = keybinds.Fly.Name,
+            InfiniteJump = keybinds.InfiniteJump.Name,
+            Invisibility = keybinds.Invisibility.Name,
+            Noclip = keybinds.Noclip.Name,
+            ToggleHub = keybinds.ToggleHub.Name
+        }
+    }
+    local encoded = HttpService:JSONEncode(data)
+    player:SetAttribute("MEDZTILITY_SETTINGS", encoded)
+end
+
+local function LoadSettings()
+    local encoded = player:GetAttribute("MEDZTILITY_SETTINGS")
+    if not encoded then return end
+    local success, data = pcall(function()
+        return HttpService:JSONDecode(encoded)
+    end)
+    if not success or not data then return end
+    hum.WalkSpeed = data.WalkSpeed or hum.WalkSpeed
+    hum.JumpPower = data.JumpPower or hum.JumpPower
+    flySpeed = data.FlySpeed or flySpeed
+    if data.Theme then
+        applyTheme(data.Theme)
+    end
+    if data.States then
+        infJump = data.States.InfiniteJump or false
+        invisible = data.States.Invisibility or false
+        noclip = data.States.Noclip or false
+        if invisible then setInvisible(true) end
+    end
+    if data.Keybinds then
+        for action, keyName in pairs(data.Keybinds) do
+            if Enum.KeyCode[keyName] then
+                keybinds[action] = Enum.KeyCode[keyName]
+            end
+        end
+    end
+end
+
+local saveBtn = MakeButton(settingsPage, "Save Settings")
+saveBtn.MouseButton1Click:Connect(function()
+    SaveSettings()
+end)
+
+applyTheme("Midnight")
+LoadSettings()
+
+main.Visible = true
+for _, page in pairs(Pages) do
+    page.Visible = false
+end
+Pages["Movement"].Visible = true
+
+print("MEDZTILITY HUB LOADED SUCCESSFULLY")
